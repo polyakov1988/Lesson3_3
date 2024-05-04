@@ -7,15 +7,28 @@ namespace Assets.Visitor
 {
     public class Spawner: MonoBehaviour, IEnemyDeathNotifier
     {
-        public event Action<Enemy> Notified;
-
         [SerializeField] private float _spawnCooldown;
         [SerializeField] private List<Transform> _spawnPoints;
         [SerializeField] private EnemyFactory _enemyFactory;
 
-        private List<Enemy> _spawnedEnemies = new List<Enemy>();
+        private readonly List<Enemy> _spawnedEnemies = new List<Enemy>();
 
         private Coroutine _spawn;
+
+        private Weight _weight;
+
+        public event Action<Enemy> Notified;
+
+        private void OnDisable()
+        {
+            _weight.WeightReached -= StopWork;
+        }
+
+        public void Init(Weight weight)
+        {
+            _weight = weight;
+            _weight.WeightReached += StopWork;
+        }
 
         public void StartWork()
         {
@@ -24,7 +37,7 @@ namespace Assets.Visitor
             _spawn = StartCoroutine(Spawn());
         }
 
-        public void StopWork()
+        private void StopWork()
         {
             if (_spawn != null)
                 StopCoroutine(_spawn);
@@ -43,6 +56,7 @@ namespace Assets.Visitor
             while (true)
             {
                 Enemy enemy = _enemyFactory.Get((EnemyType)UnityEngine.Random.Range(0, Enum.GetValues(typeof(EnemyType)).Length));
+                _weight.OnEnemySpawned(enemy);
                 enemy.MoveTo(_spawnPoints[UnityEngine.Random.Range(0, _spawnPoints.Count)].position);
                 enemy.Died += OnEnemyDied;
                 _spawnedEnemies.Add(enemy);
